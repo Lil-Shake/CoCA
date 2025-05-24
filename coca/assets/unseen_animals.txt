@@ -1,0 +1,8 @@
+snail
+hippopotamus
+cheetah
+crocodile
+lobster
+octopus
+elephant
+jellyfish
