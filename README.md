@@ -2,7 +2,7 @@
 
 This is an official implementation of "Step-level Reward for Free in RL-based T2I Diffusion Model Fine-tuning". CoCA is a contribution-based credit assignment algorithm that transforms trajectory-level rewards into step-level rewards at no additional cost in RL fine-tuning of T2I diffusion models.
 
-![](E:\CCIIP实验室\论文\NeurIPS 2025\CoCA\README.assets\comparison_grid-300.jpg)
+![](README.assets\comparison_grid-300.jpg)
 
 ## Installation
 
@@ -55,4 +55,4 @@ bash bash/train_uca_aesthetic.sh
 
 ## Reward Curves
 
-![](E:\CCIIP实验室\论文\NeurIPS 2025\CoCA\README.assets\combined_reward_plot.jpg)
+![](README.assets\combined_reward_plot.jpg)
