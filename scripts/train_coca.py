@@ -19,11 +19,12 @@ from coca.stat_tracking import PerPromptStatTracker
 from coca.diffusers_patch.pipeline_with_logprob_coca import pipeline_with_logprob
 from coca.diffusers_patch.ddim_with_logprob import ddim_step_with_logprob
 import torch
-import wandb
+import swanlab
 from functools import partial
 import tqdm
 import tempfile
 from PIL import Image
+from swanlab.integration.accelerate import SwanLabTracker
 
 tqdm = partial(tqdm.tqdm, dynamic_ncols=True)
 
@@ -74,9 +75,18 @@ def main(_):
         grad_accumulation = config.train.gradient_accumulation_steps # 32, results in 2 * 50 == 100 times of gradient update
     else:
         grad_accumulation = config.train.gradient_accumulation_steps * num_train_timesteps # 32*50
-    
+        
+    if config.reward_fn == 'hps_v2':
+        project_name = "coca-pytorch-hps"
+    elif config.reward_fn == 'PickScore':
+        project_name = "coca-pytorch_PickScore"
+    elif config.reward_fn == 'ImageReward':
+        project_name = "coca-pytorch_ImageReward"
+    else:
+        project_name = "coca-pytorch"
+    tracker = SwanLabTracker(project=project_name, experiment_name=config.run_name)
     accelerator = Accelerator(
-        log_with="wandb",
+        log_with=tracker, # "swanlab",
         mixed_precision=config.mixed_precision,
         project_config=accelerator_config,
         # we always accumulate gradients across timesteps; we want config.train.gradient_accumulation_steps to be the
@@ -85,18 +95,10 @@ def main(_):
         gradient_accumulation_steps=grad_accumulation, # 50
     )
     if accelerator.is_main_process:
-        if config.reward_fn == 'hps_v2':
-            project_name = "coca-pytorch-hps"
-        elif config.reward_fn == 'PickScore':
-            project_name = "coca-pytorch_PickScore"
-        elif config.reward_fn == 'ImageReward':
-            project_name = "coca-pytorch_ImageReward"
-        else:
-            project_name = "coca-pytorch"
         accelerator.init_trackers(
                 project_name=project_name,
                 config=config.to_dict(),
-                init_kwargs={"wandb": {"name": config.run_name}},
+                # init_kwargs={"swanlab": {"name": config.run_name}},
             )
     logger.info(f"\n{config}")
 
@@ -432,7 +434,7 @@ def main(_):
         # collate samples into dict where each entry has shape (num_batches_per_epoch * sample.batch_size, ...)
         samples = {k: torch.cat([s[k] for s in samples]) for k in samples[0].keys()}
 
-        # this is a hack to force wandb to log the images as JPEGs instead of PNGs
+        # this is a hack to force swanlab to log the images as JPEGs instead of PNGs
         with tempfile.TemporaryDirectory() as tmpdir:
             for i, image in enumerate(images):
                 pil = Image.fromarray(
@@ -443,7 +445,7 @@ def main(_):
             accelerator.log(
                 {
                     "images": [
-                        wandb.Image(
+                        swanlab.Image(
                             os.path.join(tmpdir, f"{i}.jpg"),
                             caption=f"{prompt:.25} | {reward:.2f}",
                         )
@@ -663,7 +665,6 @@ def main(_):
                             info["grad_norm"].append(torch.tensor(total_norm).to(accelerator.device))
 
                             # clip norm
-                            accelerator.unscale_gradients()
                             accelerator.clip_grad_norm_(
                                 unet.parameters(), config.train.max_grad_norm
                             )
