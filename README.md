@@ -8,6 +8,7 @@ This is an official implementation of "Step-level Reward for Free in RL-based T2
 
 ```
 cd CoCA
+conda create -n coca python=3.10
 pip install -e .
 ```
 
